@@ -10,19 +10,37 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
-const token = "" //put your token here
+const token = "1665345356:AAHdyRmnKIANP0wbgzCuDWXn59RzZ6bqUcU" //put your token here
+var homepath string = ""
+var platform string = ""
 
+func init() {
+	if os.Getenv("HOMEPATH") == "" {
+		homepath = os.Getenv("HOME")
+		platform = "unix"
+	} else {
+		homepath = os.Getenv("HOMEPATH")
+		platform = "win"
+	}
+}
 func main() {
-	basePath := filepath.Join(os.Getenv("HOMEPATH"), "Desktop/circuit-symbol-detector")
+	basePath := filepath.Join(homepath, "Desktop/circuit-symbol-detector")
 	scriptPath := filepath.Join(basePath, "img.py")
 	imgPath := filepath.Join(basePath, "img.jpeg")
 	componentFolder := filepath.Join(basePath, "dump")
-	fmt.Println("server running...")
 	pythonCall := "python3 " + scriptPath + " -p " + imgPath
+
+	fmt.Println("server running...")
+	fmt.Println("basepath:", basePath)
+	fmt.Println("scriptpath:", scriptPath)
+	fmt.Println("imgpath:", imgPath)
+	fmt.Println("componentfolderpath:", componentFolder)
+
 	bot, err := tgbotapi.NewBotAPI(token)
 	if err != nil {
 		log.Panic(err)
@@ -30,6 +48,7 @@ func main() {
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
 	updates, err := bot.GetUpdatesChan(u)
+
 	for update := range updates {
 		if update.Message.Text != "" {
 			fmt.Println(update.Message.From, "sent:", update.Message.Text)
@@ -45,8 +64,16 @@ func main() {
 				f, _ := bot.GetFile(id)
 				DownloadFile("img.jpeg", f.Link(token))
 				fmt.Println("downloaded image..")
+				time.Sleep(time.Second)
 			}
-			cmd := exec.Command("powershell.exe", pythonCall)
+			var cmd *exec.Cmd
+			if platform == "win" {
+				fmt.Println("calling powershell python")
+				cmd = exec.Command("powershell.exe", pythonCall)
+			} else {
+				fmt.Println("calling bash python")
+				cmd = exec.Command(pythonCall)
+			}
 			err := cmd.Start()
 			cmd.Wait()
 			if err != nil {

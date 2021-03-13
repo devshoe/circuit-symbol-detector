@@ -6,8 +6,11 @@ import skimage.morphology
 import argparse
 import matplotlib.pyplot as plt
 import random
+from os.path import expanduser
+home = expanduser("~")
 
-MODEL_PATH = "C:/Users/devshoe/Google Drive/colab_images/model3.h5"
+
+MODEL_PATH = home+"/Desktop/circuit-symbol-detector/colab_images/model3.h5"
 model = keras.models.load_model(MODEL_PATH)
 model.compile(loss='binary_crossentropy', optimizer='rmsprop', metrics=['accuracy'])
 model_labels = {0:"diode", 1:"resistor", 2:"inductor", 3:"ground", 4:"voltage", 5:"cap"}

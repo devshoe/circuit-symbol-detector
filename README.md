@@ -4,6 +4,8 @@ Give it a circuit, it'll give you the components with their locations.
 Works on hand drawn.
 please create a folder named dump in the same directory
 
+## before starting
+pip3 install numpy scikit-image opencv-python keras tensorflow matplotlib
 ## cli
 call img.py -p PATH/TO/IMG
 it will store components in dump folder
