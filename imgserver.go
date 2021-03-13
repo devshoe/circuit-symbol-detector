@@ -64,18 +64,19 @@ func main() {
 				f, _ := bot.GetFile(id)
 				DownloadFile("img.jpeg", f.Link(token))
 				fmt.Println("downloaded image..")
-				time.Sleep(time.Second)
+
 			}
+			time.Sleep(time.Second)
 			var cmd *exec.Cmd
 			if platform == "win" {
 				fmt.Println("calling powershell python")
 				cmd = exec.Command("powershell.exe", pythonCall)
 			} else {
 				fmt.Println("calling bash python")
-				cmd = exec.Command(pythonCall)
+				fmt.Println("python3 " + scriptPath + " -p " + imgPath)
+				cmd = exec.Command("python3", scriptPath+" -p "+imgPath)
 			}
-			err := cmd.Start()
-			cmd.Wait()
+			err := cmd.Run()
 			if err != nil {
 				fmt.Println(err)
 			}
