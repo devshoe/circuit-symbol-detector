@@ -1,3 +1,4 @@
+#!/usr/bin/python
 import numpy as np, math
 import cv2
 import matplotlib.pyplot as plt
@@ -14,7 +15,14 @@ MODEL_PATH = home+"/Desktop/circuit-symbol-detector/colab_images/model3.h5"
 model = keras.models.load_model(MODEL_PATH)
 model.compile(loss='binary_crossentropy', optimizer='rmsprop', metrics=['accuracy'])
 model_labels = {0:"diode", 1:"resistor", 2:"inductor", 3:"ground", 4:"voltage", 5:"cap"}
- 
+
+def compute_distance(x1,y1,a1,b1): 
+  return math.sqrt((x1-a1)**2 + (y1-b1)**2)
+
+def point_is_on_line(lx1,ly1,lx2,ly2,x,y,tolerance=30):
+  return (x<max(lx1,lx2)+tolerance and x>min(lx1,lx2)-tolerance) and (y<max(ly1,ly2)+tolerance and y>min(ly1,ly2)-tolerance)
+
+
 class Circuit():
   def __init__(self, image_path, threshold=50, min_comp_size_pct=0.000):
  
@@ -38,6 +46,7 @@ class Circuit():
     self.lines = []
     self.components = []
     self.extracted_components = []
+    self.nodes = []
     self.blank = self.pipelined * 0
 
     self.remove_lines()
@@ -62,7 +71,24 @@ class Circuit():
         cv2.line(self.pipelined,(x1,y1),(x2,y2),0,thickness)
     return self
  
-  def find_components(self, draw_on_blank=False, draw_on_pipeline=True, reject_below_factor=0.005, store=False):
+  def find_nodes(self, max_distance=10):
+    self.nodemap = []
+    for i in range(len(self.lines)-1):
+      x1,y1,x2,y2=self.lines[i]["coordinates"]
+      connected_segments = [self.lines[i]]
+      for j in range(i+1,len(self.lines)):
+        a1,b1,a2,b2=self.lines[j]["coordinates"]
+        d11,d12,d21,d22 = compute_distance(x1,y1,a1,b1),compute_distance(x1,y1,a2,b2),compute_distance(x2,y2,a1,b1),compute_distance(x2,y2,a2,b2)
+        if d11 <max_distance or d12<max_distance or d21<max_distance or d22<max_distance:
+          connected_segments.append(self.lines)
+      self.nodemap.append(connected_segments)
+    #   if len(connected_segments)==2:
+    #     cv2.rectangle(self.start_image,(x1,y1),(x1+10,y1+10),(123,0,12),10)
+    # cv2.imshow("lol",self.start_image)
+    # cv2.waitKey()
+    return self.nodemap
+
+  def find_components(self, draw_on_blank=False, draw_on_pipeline=True, reject_below_factor=0.005, store=True):
     """Find contours. Blob it up."""
     self.blank = self.pipelined * 0
     acceptable_area = (0, self.area * 0.8)
@@ -73,7 +99,8 @@ class Circuit():
     for cnt in self.contours:
       x,y,w,h = cv2.boundingRect(cnt)
       if w*h > self.area * reject_below_factor:
-        if store: self.components.append({"loc":(x,y),"dim":(w,h), "img":self.start_image[y:int(y+h*1.1), x:int(x+w*1.1)]})
+        if store: 
+          self.components.append({"loc":(x,y),"dim":(w,h), "img":self.start_image[y:int(y+h*1.1), x:int(x+w*1.1)]})
         if draw_on_blank:cv2.rectangle(self.blank,(x,y),(x+w,y+h),(123,0,12),10)
         if draw_on_pipeline:cv2.drawContours(self.pipelined, cnt, -1, 255, thickness)
     return self
@@ -108,3 +135,4 @@ if __name__ == "__main__":
   argparser.add_argument("-p", "-path", required=True)
   args = argparser.parse_args()
   Circuit(args.p).write_out()
+  # print([i for i in Circuit(args.p).find_nodes() if len(i)>1])

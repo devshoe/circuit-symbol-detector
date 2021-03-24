@@ -76,11 +76,12 @@ func main() {
 				fmt.Println("python3 " + scriptPath + " -p " + imgPath)
 				cmd = exec.Command("python3", scriptPath+" -p "+imgPath)
 			}
+
 			err := cmd.Run()
 			if err != nil {
 				fmt.Println(err)
 			}
-
+			fmt.Println(cmd.Output())
 			f, err := ioutil.ReadDir(componentFolder)
 			if err != nil {
 				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "that didnt work")
@@ -95,7 +96,7 @@ func main() {
 				bot.Send(pic)
 				os.Remove(path)
 			}
-			os.Remove(imgPath)
+			//os.Remove(imgPath)
 		}
 
 	}
