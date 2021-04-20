@@ -116,7 +116,8 @@ def easyocr_get_centroids(path_or_img):
     for i in result:
         pts = i[0]
         cX,cY = int((pts[0][0]+pts[2][0])/2), int((pts[0][1]+pts[2][1])/2)
-        cv2.rectangle(img,tuple(pts[0]),tuple(pts[2]),(123,0,12),2)
+        try: cv2.rectangle(img,tuple(pts[0]),tuple(pts[2]),(123,0,12),2)
+        except:pass
         # cv2.circle(img, (cX,cY),5, (123,0,12))
         cv2.putText(img, i[1], (cX,cY), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,0),5)
         data = {
@@ -178,4 +179,4 @@ def full(imgpath):
 
 
 if __name__ == "__main__":
-    full("data/hand.png")
+    full("data/hand2.jpeg")
