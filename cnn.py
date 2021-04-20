@@ -2,7 +2,6 @@ import keras
 import cv2
 import numpy as np
 import random
-import easyocr
 
 CLASS_MAP = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabdefghnqrt'
 MODEL_PATH = "data/full_model.h5"
@@ -18,13 +17,8 @@ def predict_single_char_model(img):
     prediction = list(loaded_model.predict(img)[0]) #find index of 1
     return CLASS_MAP[prediction.index(max(prediction))]
 
-
-    
-def predict_component_knn(img):
-    return
-
 def imshow(img):
-    cv2.imshow(img)
+    cv2.imshow("xd",img)
     cv2.waitKey()
 
 def imwrite(img,path):
@@ -37,7 +31,5 @@ def find_random_digit_pic(num):
     cv2.imwrite("dig.jpg",digit_cells[selected_row][selected_elem])
     return digit_cells[selected_row][selected_elem]
 
-# for i in range(10):
-#     print(predict_single_char_model(find_random_digit_pic(3)))
-
-using_easyocr("data/hand.png")
+for i in range(10):
+    print(predict_single_char_model(find_random_digit_pic(4)))
