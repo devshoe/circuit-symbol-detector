@@ -16,7 +16,7 @@ import argparse
 CLASS_MAP = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabdefghnqrt'
 MODEL_PATH = "data/full_model.h5"
 loaded_model = keras.models.load_model(MODEL_PATH) #this is our model
-
+BASE_SIZE = 1000
 #img_load takes in a image and returns 4 images
 #[0] the original RGB or otherwise
 #[1] grayscaled, essentially 2D, with values ranging from 0 to 255
@@ -30,7 +30,8 @@ def img_load(image_path):
       start_image = cv2.cvtColor(start_image, cv2.COLOR_BGRA2BGR)
     w,h = start_image.shape[0],start_image.shape[1]
     print(start_image.shape)
-    start_image = cv2.resize(start_image,(int(h/4),int(w/4)))
+
+    start_image = cv2.resize(start_image,(BASE_SIZE,int(BASE_SIZE*w/h)))
     print(start_image.shape)
     img = start_image
     if len(img.shape)==3:
@@ -39,7 +40,7 @@ def img_load(image_path):
         grayscaled = img
     grayscaled = cv2.fastNlMeansDenoising(grayscaled,None,15,15,20)
     thresholded = img_threshold(grayscaled)
-    thresholded = cv2.dilate(thresholded, np.ones((3,3)),iterations=2)
+    thresholded = cv2.dilate(thresholded, np.ones((3,3)),iterations=1)
     skeleton = skimage.morphology.skeletonize(thresholded/255).astype("uint8")*255
     return start_image, grayscaled, thresholded, skeleton
 
@@ -155,12 +156,12 @@ def separated_chars_and_predict(img):
 def length(x1,y1,x2,y2):
     return math.sqrt((x1-x2)**2 + (y1-y2)**2)
 
-def find_lines(img, vert_group_size=25, hor_group_size=30):
+def find_lines(img, vert_group_size=BASE_SIZE/8, hor_group_size=BASE_SIZE/8):
     canny = cv2.Canny(img, 100,200)
     height,width = img.shape[0], img.shape[1]
-    hline_thresh = 70
-    hline_min_line_length = min(height, width)*0.1
-    hline_max_line_gap = min(height, width)*0.1
+    hline_thresh = 90
+    hline_min_line_length = min(height, width)*0.2
+    hline_max_line_gap = min(height, width)*0.2
     all_lines = cv2.HoughLinesP(canny, 1, np.pi/180, 
                            hline_thresh, None, 
                            hline_min_line_length, hline_max_line_gap) #TODO
@@ -266,6 +267,7 @@ def line_cleanup(lines):
         cleaned.append(line_info)
     return cleaned
 
+#comps is all the text, branches are lines.
 def map_comps_to_branches(comps, branches):
     for comp in comps:
         closest,amt=0,1000000
@@ -292,19 +294,29 @@ def intersections(branches):
                 branches[i]["intersections"].append(b2["label"])
     return branches
 
-def point_is_on_line(lx1,ly1,lx2,ly2,x,y,tolerance=30):
+def point_is_on_line(lx1,ly1,lx2,ly2,x,y,tolerance=BASE_SIZE/10):
   return (x<max(lx1,lx2)+tolerance and x>min(lx1,lx2)-tolerance) and (y<max(ly1,ly2)+tolerance and y>min(ly1,ly2)-tolerance)
 
 def connect_matrix(branches):
-    mat = {b["label"]:b for b in branches}
-    conn = {}
-    for k,v in mat.items():
-        for comp in v["components"]:
-            conn[comp["text"]] = []
-            for i in v["intersections"]:
-                val = [j["text"] for j in mat[i]["components"]]
-                conn[comp["text"]] += val 
-    return conn
+    branch_dict = {b["label"]:b for b in branches}
+    final_list = {}
+    for branch_name,branch in branch_dict.items():
+        for component_on_branch in branch["components"]:
+            final_list[component_on_branch["text"]] = []
+            for i in branch["intersections"]:
+                components_on_connected_branch = [j["text"] for j in branch_dict[i]["components"]]
+                locs_of_comps = [j["center"] for j in branch_dict[i]["components"]]
+                distances_from_branch_center = [length(branch["center"][0],branch["center"][0], i[0], i[1] )for i in locs_of_comps]
+                comps_to_append = []
+                if len(components_on_connected_branch)>1:#handle connection cases here
+                    if abs(distances_from_branch_center[0] - distances_from_branch_center[1]) < BASE_SIZE * 0.1:
+                       comps_to_append = components_on_connected_branch
+                    else:
+                        comps_to_append = [components_on_connected_branch[distances_from_branch_center.index(min(distances_from_branch_center))]]
+                else:
+                    comps_to_append = components_on_connected_branch
+                final_list[component_on_branch["text"]] += comps_to_append
+    return final_list
 def full(imgpath):
     try: 
         shutil.rmtree("results")
