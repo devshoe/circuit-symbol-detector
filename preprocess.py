@@ -8,6 +8,8 @@ import sys
 import easyocr
 import keras
 import shutil
+from tabulate import tabulate
+
 # from prettyprint import pp
 
 #np.set_printoptions(threshold=sys.maxsize)
@@ -27,7 +29,9 @@ def img_load(image_path):
       start_image[trans_mask] = [255, 255, 255, 255]
       start_image = cv2.cvtColor(start_image, cv2.COLOR_BGRA2BGR)
     w,h = start_image.shape[0],start_image.shape[1]
+    print(start_image.shape)
     start_image = cv2.resize(start_image,(int(h/4),int(w/4)))
+    print(start_image.shape)
     img = start_image
     if len(img.shape)==3:
         grayscaled = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -97,7 +101,6 @@ def extract_circuit(img):
     img2 = np.zeros(output.shape)
     img3 = np.zeros(output.shape)
     img2[output == max_label] = 255
-    print(output)
     for i in range(1,nb_components):
         if i != max_label:
             img3[output==i] = 255
@@ -152,10 +155,10 @@ def separated_chars_and_predict(img):
 def length(x1,y1,x2,y2):
     return math.sqrt((x1-x2)**2 + (y1-y2)**2)
 
-def find_lines(img, vert_group_size=25, hor_group_size=25):
+def find_lines(img, vert_group_size=25, hor_group_size=30):
     canny = cv2.Canny(img, 100,200)
     height,width = img.shape[0], img.shape[1]
-    hline_thresh = 80
+    hline_thresh = 70
     hline_min_line_length = min(height, width)*0.1
     hline_max_line_gap = min(height, width)*0.1
     all_lines = cv2.HoughLinesP(canny, 1, np.pi/180, 
@@ -272,6 +275,7 @@ def map_comps_to_branches(comps, branches):
                 amt = l
                 closest = j
         branches[closest]["components"].append(comp)
+        branches[closest]["comp_loc"] = comp["center"]
     return branches
 
 def intersections(branches):
@@ -282,7 +286,9 @@ def intersections(branches):
             x3,y3,x4,y4 = b2["coordinates"]
             l11 = point_is_on_line(x1,y1,x2,y2,x3,y3)
             l12 = point_is_on_line(x1,y1,x2,y2, x4,y4)
-            if l11 or l12:
+            l21 = point_is_on_line(x3,y3,x4,y4,x1,y1)
+            l22 = point_is_on_line(x3,y3,x4,y4, x2,y2)
+            if l11 or l12 or l21 or l22:
                 branches[i]["intersections"].append(b2["label"])
     return branches
 
@@ -297,7 +303,7 @@ def connect_matrix(branches):
             conn[comp["text"]] = []
             for i in v["intersections"]:
                 val = [j["text"] for j in mat[i]["components"]]
-                conn[comp["text"]] += val
+                conn[comp["text"]] += val 
     return conn
 def full(imgpath):
     try: 
@@ -318,14 +324,33 @@ def full(imgpath):
     cv2.imwrite("results/4lines.jpg",draw_lines(i[0],lines))
     pts, img = easyocr_get_centroids(cpy)
     b = intersections(map_comps_to_branches(pts, lines))
+
     print("branch connections:")
     connections = {x["label"]:x["intersections"] for x in b}
     print(connections)
+
     print("components mapped to branches:")
     comps = {x["label"]:[l["text"] for l in x["components"]] for x in b}
     print(comps)
-    print(connect_matrix(b))
-    cv2.imwrite("results/0easyocr.jpg", img)
+    order = []
+    for val in comps.values():
+        order+=val
+    print("connection matrix:")
+    conns = connect_matrix(b)
+    rows = []
+    print(order)
+    for i in order:
+        connections = conns[i]
+        idxes = []
+        out = [i]
+        for x in connections: idxes.append(order.index(x))
+        for index,j in enumerate(order):
+            if j == i: out.append("x")
+            elif index in idxes: out.append("1")
+            else: out.append("0")
+        rows.append(out)
+    print(tabulate(rows, headers=order))
+    cv2.imwrite("results/3ocr.jpg", img)
 
 if __name__ == "__main__":
     full("data/2.jpeg")
