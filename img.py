@@ -317,6 +317,8 @@ def connect_matrix(branches):
                     comps_to_append = components_on_connected_branch
                 final_list[component_on_branch["text"]] += comps_to_append
     return final_list
+
+
 def full(imgpath):
     try: 
         shutil.rmtree("results")
@@ -368,4 +370,4 @@ if __name__ == "__main__":
     # argparser = argparse.ArgumentParser()
     # argparser.add_argument("-p", "-path", required=True)
     # args = argparser.parse_args()
-    full("img.jpeg")
+    full("sample3.jpeg")
