@@ -9,7 +9,7 @@ import easyocr
 import keras
 import shutil
 from tabulate import tabulate
-
+import argparse
 # from prettyprint import pp
 
 #np.set_printoptions(threshold=sys.maxsize)
@@ -353,4 +353,7 @@ def full(imgpath):
     cv2.imwrite("results/3ocr.jpg", img)
 
 if __name__ == "__main__":
-    full("data/2.jpeg")
+    # argparser = argparse.ArgumentParser()
+    # argparser.add_argument("-p", "-path", required=True)
+    # args = argparser.parse_args()
+    full("img.jpeg")

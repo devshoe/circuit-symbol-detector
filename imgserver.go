@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -32,7 +33,7 @@ func main() {
 	basePath := filepath.Join(homepath, "Desktop/circuit-symbol-detector")
 	scriptPath := filepath.Join(basePath, "img.py")
 	imgPath := filepath.Join(basePath, "img.jpeg")
-	componentFolder := filepath.Join(basePath, "dump")
+	componentFolder := filepath.Join(basePath, "results")
 	pythonCall := "python3 " + scriptPath + " -p " + imgPath
 
 	fmt.Println("server running...")
@@ -74,19 +75,22 @@ func main() {
 			} else {
 				fmt.Println("calling bash python")
 				fmt.Println("python3 " + scriptPath + " -p " + imgPath)
-				cmd = exec.Command("python3", scriptPath+" -p "+imgPath)
+				cmd = exec.Command("python3", scriptPath, " -p "+imgPath)
 			}
-
+			var outb, errb bytes.Buffer
+			cmd.Stdout = &outb
+			cmd.Stderr = &errb
 			err := cmd.Run()
 			if err != nil {
 				fmt.Println(err)
 			}
-			fmt.Println(cmd.Output())
+			fmt.Println("out:", outb.String(), "err:", errb.String())
 			f, err := ioutil.ReadDir(componentFolder)
 			if err != nil {
 				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "that didnt work")
 				bot.Send(msg)
 			}
+
 			fmt.Println("detected components..")
 			for _, comp := range f {
 				fmt.Println(comp.Name())
@@ -96,6 +100,8 @@ func main() {
 				bot.Send(pic)
 				os.Remove(path)
 			}
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, outb.String())
+			bot.Send(msg)
 			//os.Remove(imgPath)
 		}
 
